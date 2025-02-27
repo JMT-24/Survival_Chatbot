@@ -1,13 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Survival AI Chatbot</title>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Knowledge Chatbot</title>
+    <script>
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput").value;
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userInput })
+            });
+            const data = await response.json();
+            document.getElementById("chatbox").innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
+            document.getElementById("chatbox").innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
+        }
+    </script>
 </head>
 <body>
-    <h2>Survival AI Chatbot</h2>
+    <h1>Chatbot</h1>
     <div id="chatbox"></div>
-    <input type="text" id="userInput" placeholder="Ask something...">
+    <input type="text" id="userInput" placeholder="Ask me something...">
     <button onclick="sendMessage()">Send</button>
 </body>
 </html>
