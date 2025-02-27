@@ -1,0 +1,41 @@
+# Ignore Python virtual environments
+venv*/
+*.venv/
+env/
+.venv/
+venv310/
+
+# Ignore large libraries (PyTorch, TensorFlow, etc.)
+**/site-packages/torch/
+**/site-packages/tensorflow/
+
+# Ignore compiled files
+*.pyc
+__pycache__/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore logs and cache
+*.log
+*.cache/
+*.sqlite3
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore environment config files
+.env
+.env.local
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+*.iml
+
+# Ignore ChromaDB database files
+chromadb/
+*.chroma/
+*.chroma.sqlite3
+*.chroma.lock
