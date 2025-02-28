@@ -1,42 +1,76 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-from vector_db import add_knowledge, retrieve_best_match
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import chromadb
 import json
+import os
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-app = Flask(__name__)
-CORS(app)
+# Initialize FastAPI
+app = FastAPI()
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+# Load ChromaDB
+chroma_client = chromadb.PersistentClient(path="./chromadb_data")
+collection = chroma_client.get_collection(name="knowledge_base")
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    """Handles chat requests."""
-    user_input = request.json.get("message", "").lower()
-    response = retrieve_best_match(user_input)
-    return jsonify({"response": response})
+# Load fine-tuned transformer model
+model_path = "./trained_model"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
-@app.route("/train", methods=["POST"])
-def train():
-    """Admins can add new knowledge."""
-    data = request.json
-    question, answer = data.get("question"), data.get("answer")
+# Set up HTML rendering
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-    if question and answer:
-        add_knowledge(question, answer)
-        return jsonify({"message": "Knowledge added successfully!"})
-    return jsonify({"error": "Invalid input"}), 400
+# Path for missing knowledge storage
+missing_knowledge_path = Path("missing-knowledge.json")
 
-@app.route("/missing-questions", methods=["GET"])
-def get_missing_questions():
-    """Retrieve unanswered questions."""
-    try:
-        with open("missing_questions.json", "r") as file:
-            missing_data = json.load(file)
-        return jsonify({"missing_questions": missing_data})
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"missing_questions": []})
+# Ensure the missing knowledge file exists
+if not missing_knowledge_path.exists():
+    missing_knowledge_path.write_text(json.dumps([]))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+def log_missing_knowledge(question):
+    """Store unanswered questions in missing-knowledge.json"""
+    with missing_knowledge_path.open("r+") as f:
+        data = json.load(f)
+        if question not in data:
+            data.append(question)
+            f.seek(0)
+            json.dump(data, f, indent=4)
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/chat")
+async def ask_question(request: Request):
+    user_input = await request.json()
+    query = user_input.get("message", "")
+
+    # Search ChromaDB for the best match with similarity scores
+    results = collection.query(query_texts=[query], n_results=1, include=["documents", "distances"])
+
+    if results["documents"] and results["documents"][0]:
+        best_answer = results["documents"][0][0]  # Most relevant answer
+        similarity_score = results["distances"][0][0]  # Get similarity score
+        
+        threshold = 1.5  # Set a strict similarity threshold (lower is more strict)
+        print(f"Query: {query}")
+        print(f"Best match: {best_answer} (Score: {similarity_score})")
+
+        if similarity_score > threshold:
+            best_answer = "I don't know the answer to that yet."
+            log_missing_knowledge(query)
+        elif similarity_score < 0.5:  # Extra check for very strong matches
+            best_answer = results["documents"][0][0]
+        else:
+            best_answer = f"Maybe this helps: {results['documents'][0][0]}"
+
+
+    else:
+        best_answer = "I don't know the answer to that yet."
+        log_missing_knowledge(query)  # Log unknown queries
+
+    return {"response": best_answer}
