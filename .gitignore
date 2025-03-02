@@ -39,3 +39,13 @@ chromadb/
 *.chroma/
 *.chroma.sqlite3
 *.chroma.lock
+
+trained_model/
+
+chromadb_data/
+
+survival_model/
+
+training_data.spacy
+
+documents/
