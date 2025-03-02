@@ -39,3 +39,7 @@ chromadb/
 *.chroma/
 *.chroma.sqlite3
 *.chroma.lock
+
+trained_model/
+
+chromadb_data/
