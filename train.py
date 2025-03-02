@@ -1,6 +1,7 @@
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Trainer, TrainingArguments
 from datasets import Dataset
 import json
+import torch
 
 # Load dataset
 with open("data.json", "r") as f:
@@ -41,7 +42,13 @@ training_args = TrainingArguments(
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=dataset
+    train_dataset=dataset,
+    tokenizer=tokenizer,  # Ensure tokenizer is used for padding/truncation
+    data_collator=lambda data: {
+        "input_ids": torch.tensor([f["input_ids"] for f in data]),
+        "attention_mask": torch.tensor([f["attention_mask"] for f in data]),
+        "labels": torch.tensor([f["labels"] for f in data])
+    }
 )
 
 trainer.train()

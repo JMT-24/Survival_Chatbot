@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 import chromadb
 import json
 import os
@@ -18,7 +18,7 @@ collection = chroma_client.get_collection(name="knowledge_base")
 # Load fine-tuned transformer model
 model_path = "./trained_model"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
-model = AutoModelForSequenceClassification.from_pretrained(model_path)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
 
 # Set up HTML rendering
 app.mount("/static", StaticFiles(directory="static"), name="static")
